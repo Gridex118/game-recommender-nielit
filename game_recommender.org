@@ -205,7 +205,7 @@ We consider only a handful of users, preferring those who left a large number of
 #+begin_src jupyter-python :results none
   def get_reduced_users(users):
       users_sorted_by_products = users.sort_values("reviews", ascending=False)
-      LIMIT = 100000
+      LIMIT = 40000
       return users_sorted_by_products.head(LIMIT)
 
   users = get_reduced_users(users)
@@ -214,5 +214,47 @@ We consider only a handful of users, preferring those who left a large number of
 Finally, we write the dataset into a new file,
 #+begin_src jupyter-python :results none
   users.to_csv("users_processed.csv", index=False)
+#+end_src
+
+*** Recommendations
+#+begin_src jupyter-python
+  recommendations = pd.read_csv("recommendations.csv", index_col="review_id")
+  print(recommendations.head())
+  print(f"\n{recommendations.shape[0]} Entries")
+#+end_src
+
+#+RESULTS:
+:             app_id  helpful  funny        date  is_recommended  hours  user_id
+: review_id                                                                     
+: 0           975370        0      0  2022-12-12            True   36.3    51580
+: 1           304390        4      0  2017-02-17           False   11.5     2586
+: 2          1085660        2      0  2019-11-17            True  336.5   253880
+: 3           703080        0      0  2022-09-23            True   27.4   259432
+: 4           526870        0      0  2021-01-10            True    7.9    23869
+: 
+: 41154794 Entries
+
+The =funny= and =date= columns do not provide any useful information, so we drop them.
+We also drop the =helpful= column since we are only interested in user similarities.
+#+begin_src jupyter-python :results none
+  recommendations = recommendations.drop(["funny", "date", "helpful"], axis=1)
+#+end_src
+
+We limit this dataset to contain only those games and users that we selected.
+#+begin_src jupyter-python
+  recommendations = recommendations[
+      recommendations["app_id"].isin(games["app_id"])
+      & recommendations["user_id"].isin(users["user_id"])
+  ]
+
+  print(f"{recommendations.shape[0]} Entries")
+#+end_src
+
+#+RESULTS:
+: 2353510 Entries
+
+Saving this file,
+#+begin_src jupyter-python :results none
+  recommendations.to_csv("recommendations_processed.csv", index=False)
 #+end_src
 
