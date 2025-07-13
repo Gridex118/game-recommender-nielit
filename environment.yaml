@@ -1,0 +1,14 @@
+name: nielit-project
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python==3.13.5
+  - jupyter
+  - scikit-learn
+  - pyqt[version='>=6.7.1']
+  - numpy
+  - pandas
+  - matplotlib
+  - seaborn
+prefix: /home/rosegrid/.opt/miniconda3/envs/nielit-project
