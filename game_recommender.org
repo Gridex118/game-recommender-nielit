@@ -154,3 +154,55 @@ Now, remove the entries that are no longer present in the games dataset, and wri
 #+end_src
 #+RESULTS:
 : 35609 Entries
+
+*** Users
+#+begin_src jupyter-python
+  users = pd.read_csv("users.csv")
+  print(users.head())
+  print(f"\n{users.shape[0]} rows")
+#+end_src
+
+#+RESULTS:
+:     user_id  products
+: 0   7360263       359
+: 1  14020781       156
+: 2   8762579       329
+: 3   4820647       176
+: 4   5167327        98
+: 
+: 14306064 rows
+
+The number of reviews given by the user is unnecessary data for our purposes - dropping.
+#+begin_src jupyter-python :results none
+  users = users.drop("reviews", axis=1)
+#+end_src
+
+Inspecting the dataset, a number of users never bought any products,
+#+begin_src jupyter-python
+  users["products"] = users["products"].replace(0, np.nan)
+  users["products"].isna().sum()
+#+end_src
+#+RESULTS:
+: np.int64(139318)
+We can ignore them since they do not help in making any predictions.
+#+begin_src jupyter-python
+  users = users.dropna(subset=["products"])
+  print(f"{users.shape[0]} rows")
+#+end_src
+#+RESULTS:
+: 14166746 rows
+This is still a very large dataset, so we select only a handful of users that bought a lot of products.
+#+begin_src jupyter-python :results none
+  def get_reduced_users(users):
+      users_sorted_by_products = users.sort_values("products", ascending=False)
+      LIMIT = 100000
+      return users_sorted_by_products.head(LIMIT)
+
+  users = get_reduced_users(users)
+#+end_src
+
+Finally, we write the dataset into a new file,
+#+begin_src jupyter-python :results none
+  users.to_csv("users_processed.csv", index=False)
+#+end_src
+
