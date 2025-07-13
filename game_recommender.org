@@ -25,10 +25,11 @@ Given a list of games previously played by a user, recommend new games.
 
 ** Imports
 #+begin_src jupyter-python :results none
-    import numpy as np
-    import pandas as pd
-    import matplotlib.pyplot as plt
-    import seaborn as sns
+  import numpy as np
+  import pandas as pd
+  import matplotlib.pyplot as plt
+  import seaborn as sns
+  import json
 #+end_src
 
 ** The Data Set
@@ -48,35 +49,32 @@ few fields are of no use to us.
 
 *** Games
 #+begin_src jupyter-python
-  games = pd.read_csv("games.csv", index_col="app_id")
+  games = pd.read_csv("games.csv")
   print(games.head())
 #+end_src
 
 #+RESULTS:
 #+begin_example
-                                      title date_release   win    mac  linux  \
-  app_id                                                                       
-  13500   Prince of Persia: Warrior Within™   2008-11-21  True  False  False   
-  22364             BRINK: Agents of Change   2011-08-03  True  False  False   
-  113020       Monaco: What's Yours Is Mine   2013-04-24  True   True   True   
-  226560                 Escape Dead Island   2014-11-18  True  False  False   
-  249050            Dungeon of the ENDLESS™   2014-10-27  True   True  False   
+     app_id                              title date_release   win    mac  linux  \
+  0   13500  Prince of Persia: Warrior Within™   2008-11-21  True  False  False   
+  1   22364            BRINK: Agents of Change   2011-08-03  True  False  False   
+  2  113020       Monaco: What's Yours Is Mine   2013-04-24  True   True   True   
+  3  226560                 Escape Dead Island   2014-11-18  True  False  False   
+  4  249050            Dungeon of the ENDLESS™   2014-10-27  True   True  False   
 
-                 rating  positive_ratio  user_reviews  price_final  \
-  app_id                                                             
-  13500   Very Positive              84          2199         9.99   
-  22364        Positive              85            21         2.99   
-  113020  Very Positive              92          3722        14.99   
-  226560          Mixed              61           873        14.99   
-  249050  Very Positive              88          8784        11.99   
+            rating  positive_ratio  user_reviews  price_final  price_original  \
+  0  Very Positive              84          2199         9.99            9.99   
+  1       Positive              85            21         2.99            2.99   
+  2  Very Positive              92          3722        14.99           14.99   
+  3          Mixed              61           873        14.99           14.99   
+  4  Very Positive              88          8784        11.99           11.99   
 
-          price_original  discount  steam_deck  
-  app_id                                        
-  13500             9.99       0.0        True  
-  22364             2.99       0.0        True  
-  113020           14.99       0.0        True  
-  226560           14.99       0.0        True  
-  249050           11.99       0.0        True  
+     discount  steam_deck  
+  0       0.0        True  
+  1       0.0        True  
+  2       0.0        True  
+  3       0.0        True  
+  4       0.0        True  
 #+end_example
 
 We are not concerned with the release dates, discounts or the original prices, only the final price of the
@@ -131,6 +129,28 @@ Which is still very large, so we discard 30% of it
 
 Finally, we write this file to disk for future use.
 #+begin_src jupyter-python :results none
-  games.to_csv("games_processed.csv")
+  games.to_csv("games_processed.csv", index=False)
 #+end_src
 
+*** Game Metadata
+The original metadata file was badly formatted (set of top-level objects), so we use =jq= to fix
+it. Additionally, we drop the game description.
+#+begin_src shell :results none
+  jq -s 'del(.[].description)' games_metadata.json > games_metadata_slurp.json
+#+end_src
+
+Now, remove the entries that are no longer present in the games dataset, and write this to a new file.
+#+begin_src jupyter-python :results none
+  with open("games_metadata_slurp.json") as source:
+      games_metadata = json.load(source)
+  games_metadata_filtered = [item for item in games_metadata
+                             if item.get("app_id") in list(games["app_id"])]
+  with open("games_metadata_processed.json", "w") as sink:
+      json.dump(games_metadata_filtered, sink)
+#+end_src
+
+#+begin_src shell :results output verbatim
+  printf "%s Entries" $(jq '.[].app_id' games_metadata_processed.json| wc -l)
+#+end_src
+#+RESULTS:
+: 35609 Entries
