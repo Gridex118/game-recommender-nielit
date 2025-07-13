@@ -1,7 +1,6 @@
 #+Author: Alex Rosegrid
 #+Title: Game Recommender System as a Classification Problem
 #+Startup: indent
-#+PROPERTY: header-args:jupyter-python :session py :tangle games_recommender.py
 #+OPTIONS: ^:nil
 
 
@@ -15,6 +14,14 @@ This can be used to convert the =org= file into a =ipynb= file.
   pandoc game_recommender.org -o game_recommender.ipynb
 #+end_src
 
+* Common Imports
+#+begin_src jupyter-python :results none :noweb-ref common_imports
+  import numpy as np
+  import pandas as pd
+  import matplotlib.pyplot as plt
+  import seaborn as sns
+  import json
+#+end_src
 
 * The Report
 
@@ -22,15 +29,6 @@ This can be used to convert the =org= file into a =ipynb= file.
 #+begin_quote
 Given a list of games previously played by a user, recommend new games.
 #+end_quote
-
-** Imports
-#+begin_src jupyter-python :results none
-  import numpy as np
-  import pandas as pd
-  import matplotlib.pyplot as plt
-  import seaborn as sns
-  import json
-#+end_src
 
 ** The Data Set
 The dataset was obtained from [[https://www.kaggle.com/datasets/antonkozyriev/game-recommendations-on-steam?select=games.csv][Kaggle]]. It comprises of 4 files,
@@ -44,6 +42,14 @@ The dataset was obtained from [[https://www.kaggle.com/datasets/antonkozyriev/ga
     game or not.
 
 ** Data Cleaning
+:PROPERTIES:
+:header-args:jupyter-python: :tangle game_recommender_cleaning.py :session cleaning
+:END:
+
+#+begin_src jupyter-python :results none :noweb yes
+  <<common_imports>>
+#+end_src
+
 It is worth noting that these files, =users= and =recommendations= in particular, are much too large. Quite a
 few fields are of no use to us.
 
@@ -256,5 +262,26 @@ We limit this dataset to contain only those games and users that we selected.
 Saving this file,
 #+begin_src jupyter-python :results none
   recommendations.to_csv("recommendations_processed.csv", index=False)
+#+end_src
+
+** The Model
+:PROPERTIES:
+:header-args:jupyter-python: :tangle game_recommender_model.py :session model
+:END:
+
+#+begin_src jupyter-python :results none :noweb yes
+  <<common_imports>>
+#+end_src
+
+First, we make sure we are using the newly processed datasets.
+#+begin_src jupyter-python :results none
+  games = pd.read_csv("games_processed.csv")
+
+  with open("games_metadata_processed.json") as source:
+      games_metadata = json.load(source)
+
+  users = pd.read_csv("users_processed.csv")
+
+  recommendations = pd.read_csv("recommendations_processed.csv")
 #+end_src
 
