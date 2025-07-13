@@ -1,0 +1,15 @@
+#+Author: Alex Rosegrid
+#+Title: Game Recommender System as a Classification Problem
+#+Startup: indent
+#+PROPERTY: header-args:jupyter-python :session game_rec :tangle games_sales.py
+#+OPTIONS: ^:nil
+
+* Org, Jupyter Compatibility
+First, activate the environment that has a jupyter installation. Then load the =emacs/jupyter= package.
+#+begin_src emacs-lisp :results none
+  (myPython/activate-conda-env "~/.opt/miniconda3/envs/nielit-project")
+#+end_src
+This can be used to convert the =org= file into a =ipynb= file.
+#+begin_src shell :results none
+  pandoc game_recommender.org -o game_recommender.ipynb
+#+end_src
