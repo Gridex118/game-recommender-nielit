@@ -1,8 +1,9 @@
 #+Author: Alex Rosegrid
 #+Title: Game Recommender System as a Classification Problem
 #+Startup: indent
-#+PROPERTY: header-args:jupyter-python :session game_rec :tangle games_sales.py
+#+PROPERTY: header-args:jupyter-python :session py :tangle games_recommender.py
 #+OPTIONS: ^:nil
+
 
 * Org, Jupyter Compatibility
 First, activate the environment that has a jupyter installation. Then load the =emacs/jupyter= package.
@@ -13,3 +14,123 @@ This can be used to convert the =org= file into a =ipynb= file.
 #+begin_src shell :results none
   pandoc game_recommender.org -o game_recommender.ipynb
 #+end_src
+
+
+* The Report
+
+** The Problem Statement
+#+begin_quote
+Given a list of games previously played by a user, recommend new games.
+#+end_quote
+
+** Imports
+#+begin_src jupyter-python :results none
+    import numpy as np
+    import pandas as pd
+    import matplotlib.pyplot as plt
+    import seaborn as sns
+#+end_src
+
+** The Data Set
+The dataset was obtained from [[https://www.kaggle.com/datasets/antonkozyriev/game-recommendations-on-steam?select=games.csv][Kaggle]]. It comprises of 4 files,
+  - games.csv :: A record of games. Here, we are mainly interested in the title, ratings, and the final
+    price.
+  - games_metadata.json :: Provides the tags/genres for the games. This can be used to find similarities
+    between games.
+  - users.csv :: A list of users, the number of games they bought, and the number of times they reviewed
+    anything. The number of games bought can be used to filter out a number of users from being considered.
+  - recommendations.csv :: List of user reviews, in a form that answers if said user recommends a certain
+    game or not.
+
+** Data Cleaning
+It is worth noting that these files, =users= and =recommendations= in particular, are much too large. Quite a
+few fields are of no use to us.
+
+*** Games
+#+begin_src jupyter-python
+  games = pd.read_csv("games.csv", index_col="app_id")
+  print(games.head())
+#+end_src
+
+#+RESULTS:
+#+begin_example
+                                      title date_release   win    mac  linux  \
+  app_id                                                                       
+  13500   Prince of Persia: Warrior Within™   2008-11-21  True  False  False   
+  22364             BRINK: Agents of Change   2011-08-03  True  False  False   
+  113020       Monaco: What's Yours Is Mine   2013-04-24  True   True   True   
+  226560                 Escape Dead Island   2014-11-18  True  False  False   
+  249050            Dungeon of the ENDLESS™   2014-10-27  True   True  False   
+
+                 rating  positive_ratio  user_reviews  price_final  \
+  app_id                                                             
+  13500   Very Positive              84          2199         9.99   
+  22364        Positive              85            21         2.99   
+  113020  Very Positive              92          3722        14.99   
+  226560          Mixed              61           873        14.99   
+  249050  Very Positive              88          8784        11.99   
+
+          price_original  discount  steam_deck  
+  app_id                                        
+  13500             9.99       0.0        True  
+  22364             2.99       0.0        True  
+  113020           14.99       0.0        True  
+  226560           14.99       0.0        True  
+  249050           11.99       0.0        True  
+#+end_example
+
+We are not concerned with the release dates, discounts or the original prices, only the final price of the
+game; we can safely drop the corresponding fields.
+#+begin_src jupyter-python :results none
+  games = games.drop(["date_release", "price_original", "discount"], axis=1)
+#+end_src
+
+It's pobably a lot more efficient to just target a single platform, so let's choose the one with the largest
+number of games compatible.
+#+begin_src jupyter-python
+  def plot_games_in_platform():
+      platforms: list[str] = ["win", "steam_deck", "mac", "linux"]
+      games_in_platform = games[platforms].sum()
+      plt.bar(games_in_platform.keys(), games_in_platform, color=sns.color_palette("pastel"))
+      plt.title("Number of games compatible with each platform")
+      plt.xlabel("Platform")
+      plt.ylabel("Compatible games")
+      plt.show()
+
+  plot_games_in_platform()
+#+end_src
+
+#+RESULTS:
+[[file:./.ob-jupyter/33989c75f87303d0b891bbd95e72fea1283788f1.png]]
+
+We note that the Stem Deck has the best compatibility, so, for simplicity's sake we assume that every user
+owns one, and we can drop the other 3.
+#+begin_src jupyter-python :results none
+  games = games.drop(["win", "linux", "mac"], axis=1)
+#+end_src
+We also drop the games that are not compatible with the Steam Deck.
+#+begin_src jupyter-python :results none
+  games["steam_deck"] = games["steam_deck"].replace(False, np.nan)
+  games = games.dropna(subset=["steam_deck"])
+#+end_src
+
+This leaves us with,
+#+begin_src jupyter-python
+  remaining_game_entries = games.shape[0]
+  f"{remaining_game_entries} Entries"
+#+end_src
+#+RESULTS:
+: 50870 Entries
+Which is still very large, so we discard 30% of it
+#+begin_src jupyter-python
+  games = games.head(int(remaining_game_entries * 70 / 100))
+  f"{games.shape[0]} Entries"
+#+end_src
+#+RESULTS:
+: 35609 Entries
+
+Finally, we write this file to disk for future use.
+#+begin_src jupyter-python :results none
+  games.to_csv("games_processed.csv")
+#+end_src
+
