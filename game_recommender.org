@@ -287,6 +287,8 @@ Saving this file,
 
 #+begin_src jupyter-python :results none :noweb yes
   <<common_imports>>
+  from sklearn.ensemble import RandomForestClassifier
+  from sklearn.model_selection import train_test_split
 #+end_src
 
 First, we make sure we are using the newly processed datasets.
@@ -295,9 +297,51 @@ First, we make sure we are using the newly processed datasets.
 
   with open("games_metadata_processed.json") as source:
       games_metadata = json.load(source)
+  games_metadata = pd.DataFrame(games_metadata)
 
   users = pd.read_csv("users_processed.csv")
 
   recommendations = pd.read_csv("recommendations_processed.csv")
 #+end_src
 
+Now, the following data is available to us:
+#+begin_src jupyter-python
+  print(f"Games: {list(games.keys())}")
+  print(f"GamesMetadata: {list(games_metadata.keys())}")
+  print(f"Recommendations: {list(recommendations.keys())}")
+#+end_src
+#+RESULTS:
+: Games: ['app_id', 'title', 'rating', 'price_final']
+: GamesMetadata: ['app_id', 'tags']
+: Recommendations: ['app_id', 'is_recommended', 'hours', 'user_id']
+
+The idea is to use the features of the games played by a user to test if they'd like an arbitrary game they
+haven't yet played. This is equivalent to classifying a new game into one of ("will like", "won't like").
+The features we shall use are
+  - Overall rating of the game (as it appears on the =steam= store)
+  - The price
+  - The games' genres/tags (this makes use of the =is_recommended= feature from the =recommendations= dataset to
+    select the tags preferred by the user)
+
+*** Grouping the Game Prices
+We shall group the game prices into
+  - Free
+  - Budget :: if its under $50
+  - Expensive
+#+begin_src jupyter-python :results none
+  def classify_price(price: float) -> str:
+      return (
+          "free" if price == 0
+          else "budget" if price < 50
+          else "expensive"
+      )
+#+end_src
+
+After classifying the prices, we can drop the original =price_final= feature.
+#+begin_src jupyter-python :results none
+  games = games.assign(
+      price_category=games["price_final"].apply(classify_price)
+  )
+
+  games = games.drop("price_final", axis=1)
+#+end_src
