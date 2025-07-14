@@ -84,9 +84,10 @@ few fields are of no use to us.
 #+end_example
 
 We are not concerned with the release dates, discounts or the original prices, only the final price of the
-game; we can safely drop the corresponding fields.
+game; we can safely drop the corresponding fields. We also have no use for the user review count here (will
+rely on the =recommendations= dataset) or the positive ratio (the rating sentament value suffices).
 #+begin_src jupyter-python :results none
-  games = games.drop(["date_release", "price_original", "discount"], axis=1)
+  games = games.drop(["date_release", "price_original", "discount", "user_reviews", "positive_ratio"], axis=1)
 #+end_src
 
 It's pobably a lot more efficient to just target a single platform, so let's choose the one with the largest
@@ -116,6 +117,9 @@ We also drop the games that are not compatible with the Steam Deck.
 #+begin_src jupyter-python :results none
   games["steam_deck"] = games["steam_deck"].replace(False, np.nan)
   games = games.dropna(subset=["steam_deck"])
+
+  # We are done with the filtering so, this column too is unneeded
+  games = games.drop(["steam_deck"], axis=1)
 #+end_src
 
 This leaves us with,
