@@ -387,3 +387,10 @@ Now, there are a lot of tags, so we keep only the more commonly recurring ones,
 
   games_metadata = games_metadata.drop("tags", axis=1)
 #+end_src
+
+
+*** Merging the Datasets
+#+begin_src jupyter-python :results none
+  games_unified = games.merge(games_metadata, how="left", on="app_id")
+  df = recommendations.merge(games_unified, how="left", on="app_id")
+#+end_src
