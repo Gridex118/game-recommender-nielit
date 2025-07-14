@@ -290,6 +290,7 @@ Saving this file,
   from sklearn.ensemble import RandomForestClassifier
   from sklearn.model_selection import train_test_split
   from sklearn.preprocessing import LabelEncoder
+  from sklearn.metrics import accuracy_score
 #+end_src
 
 First, we make sure we are using the newly processed datasets.
@@ -394,3 +395,21 @@ Now, there are a lot of tags, so we keep only the more commonly recurring ones,
   games_unified = games.merge(games_metadata, how="left", on="app_id")
   df = recommendations.merge(games_unified, how="left", on="app_id")
 #+end_src
+
+*** Training and Testing
+Now that we have a single unified dataset, we can use it for training our model
+#+begin_src jupyter-python
+  X = df.drop(["user_id", "app_id", "title", "is_recommended", "hours"], axis=1)
+  y = df["is_recommended"]
+
+  X_test, X_train, y_test, y_train = train_test_split(X, y, test_size=0.2, random_state=42)
+
+  model = RandomForestClassifier(n_estimators=100, random_state=42)
+  model.fit(X_train, y_train)
+
+  y_pred = model.predict(X_test)
+  print(accuracy_score(y_test, y_pred))
+#+end_src
+
+#+RESULTS:
+: 0.7777747156029857
