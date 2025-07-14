@@ -299,8 +299,6 @@ First, we make sure we are using the newly processed datasets.
       games_metadata = json.load(source)
   games_metadata = pd.DataFrame(games_metadata)
 
-  users = pd.read_csv("users_processed.csv")
-
   recommendations = pd.read_csv("recommendations_processed.csv")
 #+end_src
 
@@ -323,17 +321,19 @@ The features we shall use are
   - The games' genres/tags (this makes use of the =is_recommended= feature from the =recommendations= dataset to
     select the tags preferred by the user)
 
-*** Grouping the Game Prices
+*** Some More Processing
+
+**** Grouping the Game Prices
 We shall group the game prices into
-  - Free
-  - Budget :: if its under $50
-  - Expensive
+  0. Free
+  1. Budget :: if its under $50
+  2. Expensive
 #+begin_src jupyter-python :results none
-  def classify_price(price: float) -> str:
+  def classify_price(price: float) -> int:
       return (
-          "free" if price == 0
-          else "budget" if price < 50
-          else "expensive"
+          0 if price == 0
+          else 1 if price < 50
+          else 2
       )
 #+end_src
 
@@ -344,4 +344,37 @@ After classifying the prices, we can drop the original =price_final= feature.
   )
 
   games = games.drop("price_final", axis=1)
+#+end_src
+
+**** Unpacking the Genre information
+It would be hard to compare genre lists, so we unpack them into binary columns of their own.
+
+#+begin_src jupyter-python
+  games_metadata["tags"] = games_metadata["tags"].apply(lambda tags: tags if isinstance(tags, list) else [])
+  all_tags = set(tag for tags in games_metadata["tags"] for tag in tags)
+
+  f"{len(all_tags)} tags in total"
+#+end_src
+#+RESULTS:
+: 441 tags in total
+
+Now, there are a lot of tags, so we keep only the more commonly recurring ones,
+#+begin_src jupyter-python
+  def get_reduced_tags(all_tags):
+      MIN = 2000
+      tag_counts = games_metadata["tags"].explode().value_counts()
+      return set(tag for tag in all_tags
+                 if tag in tag_counts[tag_counts > MIN].keys())
+
+  all_tags = get_reduced_tags(all_tags)
+  f"{len(all_tags)} tags"
+#+end_src
+#+RESULTS:
+: 48 tags
+
+#+begin_src jupyter-python :results none
+  for tag in all_tags:
+      games_metadata[tag] = games_metadata["tags"].apply(lambda tags: int(tag in tags))
+
+  games_metadata = games_metadata.drop("tags", axis=1)
 #+end_src
