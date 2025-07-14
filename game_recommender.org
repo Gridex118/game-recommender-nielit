@@ -370,6 +370,22 @@ It would be hard to compare genre lists, so we unpack them into binary columns o
 
 Now, there are a lot of tags, so we keep only the more commonly recurring ones,
 #+begin_src jupyter-python
+  def plot_genre_distribution():
+      THRESHOLD = 5000
+      tags = games_metadata["tags"].explode()
+      tag_counts = tags.value_counts()
+      valid_tags = tag_counts[tag_counts >= THRESHOLD].keys()
+      tags = tags[tags.isin(valid_tags)].value_counts()
+      tags.plot.pie(autopct="%1.1f%%")
+      plt.show()
+
+  plot_genre_distribution()
+#+end_src
+#+RESULTS:
+[[file:./.ob-jupyter/3293e10cc1d36c117b1fc13884ac8a77521517f6.png]]
+Apparently, Indie games make up most of the steam library.
+
+#+begin_src jupyter-python
   def get_reduced_tags(all_tags):
       MIN = 2000
       tag_counts = games_metadata["tags"].explode().value_counts()
