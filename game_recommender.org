@@ -290,7 +290,7 @@ Saving this file,
   from sklearn.ensemble import RandomForestClassifier
   from sklearn.model_selection import train_test_split
   from sklearn.preprocessing import LabelEncoder
-  from sklearn.metrics import accuracy_score
+  from sklearn.metrics import classification_report
 #+end_src
 
 First, we make sure we are using the newly processed datasets.
@@ -413,9 +413,10 @@ Apparently, Indie games make up most of the steam library.
 #+end_src
 
 *** Training and Testing
-Now that we have a single unified dataset, we can use it for training our model
+Now that we have a single unified dataset, we can use it for training our model.
+The =app_id= provides us no more information than the game tags, rating and price, so we drop it, along with some other /useless/ information.
 #+begin_src jupyter-python
-  X = df.drop(["user_id", "app_id", "title", "is_recommended", "hours"], axis=1)
+  X = df.drop(["app_id", "title", "is_recommended", "hours"], axis=1)
   y = df["is_recommended"]
 
   X_test, X_train, y_test, y_train = train_test_split(X, y, test_size=0.2, random_state=42)
@@ -424,8 +425,18 @@ Now that we have a single unified dataset, we can use it for training our model
   model.fit(X_train, y_train)
 
   y_pred = model.predict(X_test)
-  print(accuracy_score(y_test, y_pred))
+  print(classification_report(y_test, y_pred))
 #+end_src
-
 #+RESULTS:
-: 0.7777747156029857
+:               precision    recall  f1-score   support
+: 
+:        False       0.32      0.30      0.31    247686
+:         True       0.81      0.83      0.82    877150
+: 
+:     accuracy                           0.71   1124836
+:    macro avg       0.57      0.56      0.56   1124836
+: weighted avg       0.70      0.71      0.70   1124836
+: 
+
+This model performs very poorly at answering if the user would dislike a game.
+Our purpose for this model is, however, to recommend games that the user *might* like, which it does fairly well.
