@@ -289,6 +289,7 @@ Saving this file,
   <<common_imports>>
   from sklearn.ensemble import RandomForestClassifier
   from sklearn.model_selection import train_test_split
+  from sklearn.preprocessing import LabelEncoder
 #+end_src
 
 First, we make sure we are using the newly processed datasets.
@@ -346,11 +347,19 @@ After classifying the prices, we can drop the original =price_final= feature.
   games = games.drop("price_final", axis=1)
 #+end_src
 
+**** Encode the Overall Rating
+#+begin_src jupyter-python :results none
+  games["rating_encoded"] = LabelEncoder().fit_transform(games["rating"])
+  games = games.drop("rating", axis=1)
+#+end_src
+
 **** Unpacking the Genre information
 It would be hard to compare genre lists, so we unpack them into binary columns of their own.
 
 #+begin_src jupyter-python
-  games_metadata["tags"] = games_metadata["tags"].apply(lambda tags: tags if isinstance(tags, list) else [])
+  games_metadata["tags"] = games_metadata["tags"].apply(
+      lambda tags: tags if isinstance(tags, list) else []
+  )
   all_tags = set(tag for tags in games_metadata["tags"] for tag in tags)
 
   f"{len(all_tags)} tags in total"
