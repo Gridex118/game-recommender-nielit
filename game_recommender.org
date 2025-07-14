@@ -255,9 +255,21 @@ We limit this dataset to contain only those games and users that we selected.
 
   print(f"{recommendations.shape[0]} Entries")
 #+end_src
-
 #+RESULTS:
 : 2353510 Entries
+
+Since the games and users were filtered out indepedant of each other, we can not say for sure that each user
+left as many reviews as reported in the users dataset. So, we drop off the users with a low review count.
+#+begin_src jupyter-python
+  recommendations = recommendations.groupby("user_id").filter(lambda x: len(x) > 50)
+
+  print(f"{recommendations.shape[0]} Entries")
+#+end_src
+#+RESULTS:
+: 1406045 Entries
+/The =users= dataset will not be used further, so no point in updating it./
+/The =games= dataset will be used for content based filtering, and can be used independant of the
+recommendations dataset/
 
 Saving this file,
 #+begin_src jupyter-python :results none
