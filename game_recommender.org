@@ -47,6 +47,7 @@ The dataset was obtained from [[https://www.kaggle.com/datasets/antonkozyriev/ga
 
 #+begin_src jupyter-python :results none :noweb yes
   <<common_imports>>
+  import json
 #+end_src
 
 It is worth noting that these files, =users= and =recommendations= in particular, are much too large. Quite a
@@ -73,19 +74,19 @@ From here, filter out the games that have no tags listed, since these won't real
 We remove a few of these entries,
 #+begin_src jupyter-python :results none
   with open("games_metadata_processed.json") as source:
-      games_metadata = pd.read_json(source)
+      games_metadata = json.load(source)
 
   def get_reduced_games_metadata(games_metadata):
       LIMIT = 30000
-      return games_metadata.head(LIMIT)
+      return games_metadata[:LIMIT]
 
   games_metadata = get_reduced_games_metadata(games_metadata)
 #+end_src
 
-Then save the file as a =.csv= file.
+Then save these to disk.
 #+begin_src jupyter-python :results none
-  with open("games_metadata_processed.csv", "w") as sink:
-      games_metadata.to_csv(sink, index=False)
+  with open("games_metadata_processed.json", "w") as sink:
+      json.dump(games_metadata, sink)
 #+end_src
 
 *** Games
@@ -159,6 +160,8 @@ We also drop the games that are not compatible with the Steam Deck.
 
 Then we remove the games we filtered out in the games metadata dataset.
 #+begin_src jupyter-python
+  games_metadata = pd.read_json("games_metadata_processed.json")
+
   games = games[
       games["app_id"].isin(games_metadata["app_id"])
   ]
@@ -241,7 +244,6 @@ Finally, we write the dataset into a new file,
   print(recommendations.head())
   print(f"\n{recommendations.shape[0]} Entries")
 #+end_src
-
 #+RESULTS:
 :             app_id  helpful  funny        date  is_recommended  hours  user_id
 : review_id                                                                     
@@ -269,7 +271,7 @@ We limit this dataset to contain only those games and users that we selected.
   print(f"{recommendations.shape[0]} Entries")
 #+end_src
 #+RESULTS:
-: 2353510 Entries
+: 1771884 Entries
 
 Since the games and users were filtered out indepedant of each other, we can not say for sure that each user
 left as many reviews as reported in the users dataset. So, we drop off the users with a low review count.
@@ -279,7 +281,7 @@ left as many reviews as reported in the users dataset. So, we drop off the users
   print(f"{recommendations.shape[0]} Entries")
 #+end_src
 #+RESULTS:
-: 1406045 Entries
+: 919920 Entries
 /The =users= dataset will not be used further, so no point in updating it./
 /The =games= dataset will be used for content based filtering, and can be used independant of the
 recommendations dataset/
@@ -307,8 +309,7 @@ First, we make sure we are using the newly processed datasets.
   games = pd.read_csv("games_processed.csv")
 
   with open("games_metadata_processed.json") as source:
-      games_metadata = json.load(source)
-  games_metadata = pd.DataFrame(games_metadata)
+      games_metadata = pd.read_json(source)
 
   recommendations = pd.read_csv("recommendations_processed.csv")
 #+end_src
@@ -374,7 +375,7 @@ It would be hard to compare genre lists, so we unpack them into binary columns o
   f"{len(all_tags)} tags in total"
 #+end_src
 #+RESULTS:
-: 441 tags in total
+: 440 tags in total
 
 Now, there are a lot of tags, so we keep only the more commonly recurring ones,
 #+begin_src jupyter-python
@@ -390,7 +391,7 @@ Now, there are a lot of tags, so we keep only the more commonly recurring ones,
   plot_genre_distribution()
 #+end_src
 #+RESULTS:
-[[file:./.ob-jupyter/3293e10cc1d36c117b1fc13884ac8a77521517f6.png]]
+[[file:./.ob-jupyter/cf1958d54a600d2c6d04712ecc0c074a27eaf572.png]]
 Apparently, Indie games make up most of the steam library.
 
 #+begin_src jupyter-python
@@ -404,7 +405,7 @@ Apparently, Indie games make up most of the steam library.
   f"{len(all_tags)} tags"
 #+end_src
 #+RESULTS:
-: 48 tags
+: 40 tags
 
 #+begin_src jupyter-python :results none
   for tag in all_tags:
@@ -423,7 +424,7 @@ Apparently, Indie games make up most of the steam library.
 *** Training and Testing
 Now that we have a single unified dataset, we can use it for training our model.
 The =app_id= provides us no more information than the game tags, rating and price, so we drop it, along with some other /useless/ information.
-#+begin_src jupyter-python
+#+begin_src jupyter-python :results none
   X = df.drop(["app_id", "title", "is_recommended", "hours"], axis=1)
   y = df["is_recommended"]
 
@@ -431,19 +432,22 @@ The =app_id= provides us no more information than the game tags, rating and pric
 
   model = RandomForestClassifier(n_estimators=100, random_state=42)
   model.fit(X_train, y_train)
+#+end_src
 
+We then evaluate the model using it's precision, recall, and F1 scores.
+#+begin_src jupyter-python
   y_pred = model.predict(X_test)
   print(classification_report(y_test, y_pred))
 #+end_src
 #+RESULTS:
 :               precision    recall  f1-score   support
 : 
-:        False       0.32      0.30      0.31    247686
-:         True       0.81      0.83      0.82    877150
+:        False       0.32      0.29      0.30    160779
+:         True       0.81      0.83      0.82    575157
 : 
-:     accuracy                           0.71   1124836
-:    macro avg       0.57      0.56      0.56   1124836
-: weighted avg       0.70      0.71      0.70   1124836
+:     accuracy                           0.71    735936
+:    macro avg       0.56      0.56      0.56    735936
+: weighted avg       0.70      0.71      0.70    735936
 : 
 
 This model performs very poorly at answering if the user would dislike a game.
