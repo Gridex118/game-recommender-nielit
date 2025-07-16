@@ -207,16 +207,16 @@ Using a scatterplot
 #+end_src
 
 #+RESULTS:
-[[file:./.ob-jupyter/560e9eac15704d87c0e1137049dc00ce1f4dd924.png]]
+[[file:./.ob-jupyter/5e135127a5d884c50a92aee835546784b2364b9a.png]]
 
 We note that users who left the largest number of reviews bought somewhere under 10,000 games.
 
 We consider only a handful of users, preferring those who left a large number of reviews.
 #+begin_src jupyter-python :results none
   def get_reduced_users(users):
-      users_sorted_by_products = users.sort_values("reviews", ascending=False)
+      users_sorted_by_reviews = users.sort_values("reviews", ascending=False)
       LIMIT = 40000
-      return users_sorted_by_products.head(LIMIT)
+      return users_sorted_by_reviews.head(LIMIT)
 
   users = get_reduced_users(users)
 #+end_src
