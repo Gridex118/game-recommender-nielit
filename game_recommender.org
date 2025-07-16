@@ -20,7 +20,6 @@ This can be used to convert the =org= file into a =ipynb= file.
   import pandas as pd
   import matplotlib.pyplot as plt
   import seaborn as sns
-  import json
 #+end_src
 
 * The Report
@@ -52,6 +51,42 @@ The dataset was obtained from [[https://www.kaggle.com/datasets/antonkozyriev/ga
 
 It is worth noting that these files, =users= and =recommendations= in particular, are much too large. Quite a
 few fields are of no use to us.
+
+*** Game Metadata
+The original metadata file was badly formatted (set of top-level objects), so we use =jq= to fix
+it. Additionally, we drop the game description.
+#+begin_src shell
+  jq -s 'del(.[].description)' games_metadata.json > games_metadata_slurp.json
+  printf "%s Entries" $(jq '.[].app_id' games_metadata_slurp.json| wc -l)
+#+end_src
+#+RESULTS:
+: 50872 Entries
+
+From here, filter out the games that have no tags listed, since these won't really help in the classification.
+#+begin_src shell
+  jq '.[] | select(.tags | length > 0)' games_metadata_slurp.json| jq -s > games_metadata_processed.json
+  printf "%s Entries" $(jq '.[].app_id' games_metadata_processed.json| wc -l)
+#+end_src
+#+RESULTS:
+: 49628 Entries
+
+We remove a few of these entries,
+#+begin_src jupyter-python :results none
+  with open("games_metadata_processed.json") as source:
+      games_metadata = pd.read_json(source)
+
+  def get_reduced_games_metadata(games_metadata):
+      LIMIT = 30000
+      return games_metadata.head(LIMIT)
+
+  games_metadata = get_reduced_games_metadata(games_metadata)
+#+end_src
+
+Then save the file as a =.csv= file.
+#+begin_src jupyter-python :results none
+  with open("games_metadata_processed.csv", "w") as sink:
+      games_metadata.to_csv(sink, index=False)
+#+end_src
 
 *** Games
 #+begin_src jupyter-python
@@ -122,48 +157,22 @@ We also drop the games that are not compatible with the Steam Deck.
   games = games.drop(["steam_deck"], axis=1)
 #+end_src
 
-This leaves us with,
+Then we remove the games we filtered out in the games metadata dataset.
 #+begin_src jupyter-python
-  remaining_game_entries = games.shape[0]
-  f"{remaining_game_entries} Entries"
+  games = games[
+      games["app_id"].isin(games_metadata["app_id"])
+  ]
+
+  print(f"{games.shape[0]} Entries")
 #+end_src
+
 #+RESULTS:
-: 50870 Entries
-Which is still very large, so we discard 30% of it
-#+begin_src jupyter-python
-  games = games.head(int(remaining_game_entries * 70 / 100))
-  f"{games.shape[0]} Entries"
-#+end_src
-#+RESULTS:
-: 35609 Entries
+: 30000 Entries
 
 Finally, we write this file to disk for future use.
 #+begin_src jupyter-python :results none
   games.to_csv("games_processed.csv", index=False)
 #+end_src
-
-*** Game Metadata
-The original metadata file was badly formatted (set of top-level objects), so we use =jq= to fix
-it. Additionally, we drop the game description.
-#+begin_src shell :results none
-  jq -s 'del(.[].description)' games_metadata.json > games_metadata_slurp.json
-#+end_src
-
-Now, remove the entries that are no longer present in the games dataset, and write this to a new file.
-#+begin_src jupyter-python :results none
-  with open("games_metadata_slurp.json") as source:
-      games_metadata = json.load(source)
-  games_metadata_filtered = [item for item in games_metadata
-                             if item.get("app_id") in list(games["app_id"])]
-  with open("games_metadata_processed.json", "w") as sink:
-      json.dump(games_metadata_filtered, sink)
-#+end_src
-
-#+begin_src shell :results output verbatim
-  printf "%s Entries" $(jq '.[].app_id' games_metadata_processed.json| wc -l)
-#+end_src
-#+RESULTS:
-: 35609 Entries
 
 *** Users
 #+begin_src jupyter-python
@@ -356,7 +365,6 @@ After classifying the prices, we can drop the original =price_final= feature.
 
 **** Unpacking the Genre information
 It would be hard to compare genre lists, so we unpack them into binary columns of their own.
-
 #+begin_src jupyter-python
   games_metadata["tags"] = games_metadata["tags"].apply(
       lambda tags: tags if isinstance(tags, list) else []
